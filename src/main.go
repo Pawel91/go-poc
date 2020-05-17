@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 )
 
 func setupLogger() {
@@ -18,4 +19,11 @@ func main() {
 	setupLogger()
 	log.Print("Begin POC")
 	defer log.Print("Exit main")
+
+	server := &MyServer{}
+
+	server.RunAsync("localhost:80")
+
+	time.Sleep(10 * time.Minute)
+
 }
