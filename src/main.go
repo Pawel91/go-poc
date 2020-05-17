@@ -24,6 +24,7 @@ func main() {
 
 	server.RunAsync("localhost:80")
 
-	time.Sleep(10 * time.Minute)
+	time.Sleep(20 * time.Second)
 
+	server.Stop()
 }

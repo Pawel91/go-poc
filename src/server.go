@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -8,6 +9,9 @@ import (
 
 type MyServer struct {
 	httpServer *http.Server
+
+	stopSignal     chan int
+	serverFinished chan int
 }
 
 func (server *MyServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -30,16 +34,59 @@ func (server *MyServer) setup() {
 	log.Print("setup")
 	defer log.Print("Finish setup")
 
+	server.stopSignal = make(chan int)
+	server.serverFinished = make(chan int)
+}
+
+func (server *MyServer) waitForStopWorker() {
+	log.Print("Waiting for stop event")
+	signal := <-server.stopSignal
+	log.Printf("Stop signal [%v] received", signal)
+
+	if signal != 0 {
+		return
+	}
+
+	if err := server.httpServer.Shutdown(context.Background()); err != nil {
+		log.Printf("Error [%v] shuting down server", err)
+		return
+	}
+
+	log.Print("Server was shut down successfully")
+}
+
+func (server *MyServer) onFinishServer() {
+	server.serverFinished <- 0
 }
 
 func (server *MyServer) doRun(addr string) {
-	defer log.Print("Funished running server")
+
+	defer server.onFinishServer()
+	defer log.Print("Finished running server")
+
+	server.setup()
 
 	server.httpServer = &http.Server{Addr: addr, Handler: server}
 	log.Print("Running server on address:", addr)
-	server.httpServer.ListenAndServe()
+
+	go server.waitForStopWorker()
+	if err := server.httpServer.ListenAndServe(); err != http.ErrServerClosed {
+		log.Printf("Error [%v] starting server", err)
+		server.stopSignal <- -1
+	}
 }
 
 func (server *MyServer) RunAsync(addr string) {
 	go server.doRun(addr)
+}
+
+func (server *MyServer) Stop() {
+
+	log.Printf("Stoping server")
+	server.stopSignal <- 0
+
+	log.Print("Wait for finish")
+	<-server.serverFinished
+
+	log.Print("Finish signal recerived")
 }
