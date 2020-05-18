@@ -30,7 +30,11 @@ func (db *JsonDB) Init() {
 
 func (db *JsonDB) Test() {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	res, _ := db.collection.InsertOne(ctx, bson.M{"name": "Radu", "last_name": "Pavel", "cnp": 123123})
+	res, err := db.collection.InsertOne(ctx, bson.M{"name": "Radu", "last_name": "Pavel", "cnp": 123123})
+	if err != nil {
+		log.Print(err)
+		return
+	}
 	id := res.InsertedID
 
 	log.Print(id)
