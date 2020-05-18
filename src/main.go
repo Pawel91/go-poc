@@ -20,11 +20,16 @@ func main() {
 	log.Print("Begin POC")
 	defer log.Print("Exit main")
 
+	jsonDB := &JsonDB{}
+	jsonDB.Init()
+	jsonDB.Test()
+
 	server := &MyServer{}
+	server.Init()
 
-	server.RunAsync("localhost:80")
+	server.RunAsync("192.168.1.192:80")
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(60 * time.Minute)
 
 	server.Stop()
 }

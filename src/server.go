@@ -9,6 +9,7 @@ import (
 
 type MyServer struct {
 	httpServer *http.Server
+	muxHandler *http.ServeMux
 
 	stopSignal     chan int
 	serverFinished chan int
@@ -18,8 +19,8 @@ func (server *MyServer) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 	log.Print(request.Method, " ", request.URL.RequestURI())
 	dummy := make(map[string]interface{})
-	dummy["ala"] = "bala"
-	dummy["integer"] = 13
+	dummy["title"] = "This is my Golang demo"
+	dummy["description"] = "For sparta!"
 	js, err := json.Marshal(dummy)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -30,12 +31,14 @@ func (server *MyServer) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	writer.Write(js)
 }
 
-func (server *MyServer) setup() {
+func (server *MyServer) Init() {
 	log.Print("setup")
 	defer log.Print("Finish setup")
 
 	server.stopSignal = make(chan int)
 	server.serverFinished = make(chan int)
+
+	server.muxHandler = http.NewServeMux()
 }
 
 func (server *MyServer) waitForStopWorker() {
@@ -64,9 +67,9 @@ func (server *MyServer) doRun(addr string) {
 	defer server.onFinishServer()
 	defer log.Print("Finished running server")
 
-	server.setup()
+	server.muxHandler.Handle("/", server)
 
-	server.httpServer = &http.Server{Addr: addr, Handler: server}
+	server.httpServer = &http.Server{Addr: addr, Handler: server.muxHandler}
 	log.Print("Running server on address:", addr)
 
 	go server.waitForStopWorker()
