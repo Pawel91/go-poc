@@ -15,9 +15,44 @@ type MyServer struct {
 	serverFinished chan int
 }
 
-func (server *MyServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+type PersonRESTApi struct {
+}
 
-	log.Print(request.Method, " ", request.URL.RequestURI())
+func (api *PersonRESTApi) onPOST(writer http.ResponseWriter, request *http.Request) {
+
+}
+
+func (api *PersonRESTApi) onGET(writer http.ResponseWriter, request *http.Request) {
+	dummy := make(map[string]interface{})
+	dummy["title"] = "GET on Person API"
+	dummy["description"] = "This will return a person"
+	js, err := json.Marshal(dummy)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.Write(js)
+}
+
+func (api *PersonRESTApi) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	if request.Method == "POST" {
+		api.onPOST(writer, request)
+		return
+	}
+
+	if request.Method == "GET" {
+		api.onGET(writer, request)
+		return
+	}
+
+	http.Error(writer, "Invalid method for this url", http.StatusBadRequest)
+}
+
+type DummyHandler struct{}
+
+func (handler *DummyHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	dummy := make(map[string]interface{})
 	dummy["title"] = "This is my Golang demo"
 	dummy["description"] = "For sparta!"
@@ -29,6 +64,11 @@ func (server *MyServer) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.Write(js)
+}
+
+func (server *MyServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	log.Print(request.Method, " ", request.URL.RequestURI())
+	server.muxHandler.ServeHTTP(writer, request)
 }
 
 func (server *MyServer) Init() {
@@ -62,14 +102,19 @@ func (server *MyServer) onFinishServer() {
 	server.serverFinished <- 0
 }
 
+func (server *MyServer) registerHandlers() {
+	server.muxHandler.Handle("/", &DummyHandler{})
+	server.muxHandler.Handle("/services/restapi/1.0/Person", &PersonRESTApi{})
+}
+
 func (server *MyServer) doRun(addr string) {
 
 	defer server.onFinishServer()
 	defer log.Print("Finished running server")
 
-	server.muxHandler.Handle("/", server)
+	server.registerHandlers()
 
-	server.httpServer = &http.Server{Addr: addr, Handler: server.muxHandler}
+	server.httpServer = &http.Server{Addr: addr, Handler: server}
 	log.Print("Running server on address:", addr)
 
 	go server.waitForStopWorker()
