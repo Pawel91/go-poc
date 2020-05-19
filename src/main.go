@@ -20,9 +20,11 @@ func main() {
 	log.Print("Begin POC")
 	defer log.Print("Exit main")
 
-	jsonDB := &JsonDB{}
-	jsonDB.Init()
-	jsonDB.Test()
+	db, _ := NewPersonDB()
+	db.Insert(&Person{Name: "TestName", LastName: "TestLastName", CNP: 123})
+
+	p, _ := db.Get(123)
+	log.Print(p)
 
 	server := &MyServer{}
 	server.Init()
