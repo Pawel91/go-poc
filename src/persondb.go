@@ -32,8 +32,8 @@ func NewPersonDB() (IPersonDB, error) {
 
 func (db *personDB) Insert(person *Person) error {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	//_, err := db.collection.InsertOne(ctx, bson.M{"name": person.Name, "last_name": person.LastName, "cnp": person.CNP})
-	_, err := db.collection.InsertOne(ctx, person)
+	obj := bson.M{"name": person.Name, "lastname": person.LastName, "cnp": person.CNP}
+	_, err := db.collection.InsertOne(ctx, obj)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,6 @@ func (db *personDB) Get(cnp int) (*Person, error) {
 		return nil, err
 	}
 
-	log.Print(value)
 	return &person, nil
 }
 

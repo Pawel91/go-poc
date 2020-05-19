@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 type MyServer struct {
@@ -16,17 +18,69 @@ type MyServer struct {
 }
 
 type PersonRESTApi struct {
+	PersonDB IPersonDB
+}
+
+func (api *PersonRESTApi) Init() {
+	api.PersonDB, _ = NewPersonDB()
 }
 
 func (api *PersonRESTApi) onPOST(writer http.ResponseWriter, request *http.Request) {
 
+	url := request.URL.RequestURI()
+	if url != "/services/restapi/1.0/Persons/" {
+		http.Error(writer, "Invalid service request", http.StatusBadRequest)
+		return
+	}
+
+	var person Person
+	decoder := json.NewDecoder(request.Body)
+	err := decoder.Decode(&person)
+	if err != nil {
+		http.Error(writer, "Invalid service request", http.StatusBadRequest)
+		return
+	}
+
+	err = api.PersonDB.Insert(&person)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result := make(map[string]interface{})
+	result["error"] = 0
+	result["message"] = "all good"
+
+	js, err := json.MarshalIndent(result, "", "    ")
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.Write(js)
+}
+
+func (api *PersonRESTApi) getPersonCnpFromURL(url string) string {
+	var paths []string
+	paths = strings.Split(url, "/")
+	return paths[len(paths)-1]
 }
 
 func (api *PersonRESTApi) onGET(writer http.ResponseWriter, request *http.Request) {
-	dummy := make(map[string]interface{})
-	dummy["title"] = "GET on Person API"
-	dummy["description"] = "This will return a person"
-	js, err := json.Marshal(dummy)
+
+	url := request.URL.RequestURI()
+	if !strings.HasPrefix(url, "/services/restapi/1.0/Persons/") {
+		http.Error(writer, "Invalid service request", http.StatusBadRequest)
+		return
+	}
+
+	cnp_str := api.getPersonCnpFromURL(url)
+	cnp, _ := strconv.Atoi(cnp_str)
+
+	person, _ := api.PersonDB.Get(cnp)
+
+	js, err := json.MarshalIndent(person, "", "    ")
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
@@ -103,8 +157,9 @@ func (server *MyServer) onFinishServer() {
 }
 
 func (server *MyServer) registerHandlers() {
-	server.muxHandler.Handle("/", &DummyHandler{})
-	server.muxHandler.Handle("/services/restapi/1.0/Person", &PersonRESTApi{})
+	api := &PersonRESTApi{}
+	api.Init()
+	server.muxHandler.Handle("/", api)
 }
 
 func (server *MyServer) doRun(addr string) {

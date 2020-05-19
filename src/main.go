@@ -20,11 +20,14 @@ func main() {
 	log.Print("Begin POC")
 	defer log.Print("Exit main")
 
-	db, _ := NewPersonDB()
-	db.Insert(&Person{Name: "TestName", LastName: "TestLastName", CNP: 123})
+	//db, _ := NewPersonDB()
+	//err := db.Insert(&Person{Name: "anotherone", LastName: "adasd", CNP: 123456})
+	//if err != nil {
+	//	log.Print(err.Error())
+	//}
 
-	p, _ := db.Get(123)
-	log.Print(p)
+	//p, _ := db.Get(123)
+	//log.Print(p)
 
 	server := &MyServer{}
 	server.Init()
